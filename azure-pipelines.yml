@@ -1,0 +1,53 @@
+trigger:
+- none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+name: $(date:yyyyMMdd)$(rev:.r)
+
+stages:
+- stage: Terraform AKS Provisioning
+  displayName: 'AKS Provisioning'
+  jobs:
+  - job: AKS_Provisioning
+    displayName: 'AKS Provisioning'
+    steps:
+      - task: TerraformInstaller@1
+        inputs:
+          terraformVersion: 'latest'
+
+      - task: TerraformTaskV4@4
+        displayName: Terraform init
+        inputs:
+          provider: 'azurerm'
+          command: 'init'
+          backendServiceArm: 'Azure-Cloud-Con'
+          backendAzureRmResourceGroupName: 'pranavtripathi'
+          backendAzureRmStorageAccountName: 'aksterraformassignment'
+          backendAzureRmContainerName: 'aks-tfstate'
+          backendAzureRmKey: 'aks-cluster.tfstate'
+          
+      - task: TerraformTaskV4@4
+        inputs:
+          provider: 'azurerm'
+          command: 'validate'
+          
+      - task: TerraformTaskV4@4
+        inputs:
+          provider: 'azurerm'
+          command: 'plan'
+          environmentServiceNameAzureRM: 'Azure-Cloud-Con'
+
+      - task: TerraformTaskV4@4
+        inputs:
+          provider: 'azurerm'
+          command: 'apply'
+          commandOptions: '-auto-approve'
+          environmentServiceNameAzureRM: 'Azure-Cloud-Con'
+
+      - task: TerraformTaskV4@4
+        inputs:
+          provider: 'azurerm'
+          command: 'output'
+          environmentServiceNameAzureRM: 'Azure-Cloud-Con'
