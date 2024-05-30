@@ -7,7 +7,7 @@ pool:
 name: $(date:yyyyMMdd)$(rev:.r)
 
 stages:
-- stage: Terraform AKS Provisioning
+- stage: Terraform_AKS_Provisioning
   displayName: 'AKS Provisioning'
   jobs:
   - job: AKS_Provisioning
