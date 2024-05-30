@@ -28,11 +28,6 @@ stages:
           backendAzureRmContainerName: 'aks-tfstate'
           backendAzureRmKey: 'aks-cluster.tfstate'
           
-      - task: TerraformTaskV4@4
-        displayName: Terraform Validate
-        inputs:
-          provider: 'azurerm'
-          command: 'validate'
           
       - task: TerraformTaskV4@4
         displayName: Terraform Plan
