@@ -29,17 +29,20 @@ stages:
           backendAzureRmKey: 'aks-cluster.tfstate'
           
       - task: TerraformTaskV4@4
+        displayName: Terraform Validate
         inputs:
           provider: 'azurerm'
           command: 'validate'
           
       - task: TerraformTaskV4@4
+        displayName: Terraform Plan
         inputs:
           provider: 'azurerm'
           command: 'plan'
           environmentServiceNameAzureRM: 'Azure-Cloud-Con'
 
       - task: TerraformTaskV4@4
+        displayName: Terraform Apply
         inputs:
           provider: 'azurerm'
           command: 'apply'
@@ -47,6 +50,7 @@ stages:
           environmentServiceNameAzureRM: 'Azure-Cloud-Con'
 
       - task: TerraformTaskV4@4
+        displayName: Terraform Output
         inputs:
           provider: 'azurerm'
           command: 'output'
