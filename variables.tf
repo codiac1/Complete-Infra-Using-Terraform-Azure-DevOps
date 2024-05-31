@@ -31,6 +31,19 @@ variable "vm_size" {
   default     = "Standard_B2s"
 }
 
+variable "key_vault_name" {
+  description = "The name of the Azure key vault"
+  type        = string
+}
+
+variable "client_id" {
+
+}
+
+variable "client_secret" {
+
+}
+
 variable "tag" {
   default = "Training"
 }
