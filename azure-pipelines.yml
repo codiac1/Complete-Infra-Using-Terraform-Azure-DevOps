@@ -6,6 +6,15 @@ pool:
 
 name: $(date:yyyyMMdd)$(rev:.r)
 
+variables:
+  terraformVersion: 'latest'
+  backendServiceArm: '<your-azure-service-connection>'
+  backendResourceGroup: '<your-azure-resource-group>'
+  backendStorageAccount: '<your-azure-storage-account>'
+  backendContainer: '<your-azure-container-name>'
+  backendKey: '<your-tfstate-key>'
+  provider: 'azurerm'
+
 stages:
 - stage: Terraform_AKS_Provisioning
   displayName: 'AKS Provisioning'
@@ -15,38 +24,37 @@ stages:
     steps:
       - task: TerraformInstaller@1
         inputs:
-          terraformVersion: 'latest'
+          terraformVersion: $(terraformVersion)
 
       - task: TerraformTaskV4@4
         displayName: Terraform init
         inputs:
-          provider: 'azurerm'
+          provider: $(provider)
           command: 'init'
-          backendServiceArm: 'Azure-Cloud-Con'
-          backendAzureRmResourceGroupName: 'pranavtripathi'
-          backendAzureRmStorageAccountName: 'aksterraformassignment'
-          backendAzureRmContainerName: 'aks-tfstate'
-          backendAzureRmKey: 'aks-cluster.tfstate'
-          
+          backendServiceArm: $(backendServiceArm)
+          backendAzureRmResourceGroupName: $(backendResourceGroup)
+          backendAzureRmStorageAccountName: $(backendStorageAccount)
+          backendAzureRmContainerName: $(backendContainer)
+          backendAzureRmKey: $(backendKey)
           
       - task: TerraformTaskV4@4
         displayName: Terraform Plan
         inputs:
-          provider: 'azurerm'
+          provider: $(provider)
           command: 'plan'
-          environmentServiceNameAzureRM: 'Azure-Cloud-Con'
+          environmentServiceNameAzureRM: $(backendServiceArm)
 
       - task: TerraformTaskV4@4
         displayName: Terraform Apply
         inputs:
-          provider: 'azurerm'
+          provider: $(provider)
           command: 'apply'
           commandOptions: '-auto-approve'
-          environmentServiceNameAzureRM: 'Azure-Cloud-Con'
+          environmentServiceNameAzureRM: $(backendServiceArm)
 
       - task: TerraformTaskV4@4
         displayName: Terraform Output
         inputs:
-          provider: 'azurerm'
+          provider: $(provider)
           command: 'output'
-          environmentServiceNameAzureRM: 'Azure-Cloud-Con'
+          environmentServiceNameAzureRM: $(backendServiceArm)
