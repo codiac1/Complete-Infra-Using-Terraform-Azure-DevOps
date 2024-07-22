@@ -2,5 +2,7 @@
 *.tfstate
 *.tfstate.*
 .terraform/
-terraform.tfvars
 .terraform.lock.hcl
+.idea
+.vs
+.vscode

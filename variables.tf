@@ -47,3 +47,4 @@ variable "client_secret" {
 variable "tag" {
   default = "Training"
 }
+
