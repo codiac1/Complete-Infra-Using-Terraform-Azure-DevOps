@@ -1,60 +1,124 @@
 trigger:
 - none
 
+variables:
+- group: IdentityVariables
+
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'windows-latest'
 
 name: $(date:yyyyMMdd)$(rev:.r)
 
 variables:
   terraformVersion: 'latest'
-  backendServiceArm: '<your-azure-service-connection>'
-  backendResourceGroup: '<your-azure-resource-group>'
-  backendStorageAccount: '<your-azure-storage-account>'
-  backendContainer: '<your-azure-container-name>'
-  backendKey: '<your-tfstate-key>'
-  provider: 'azurerm'
+  AzureRM_name: '<your-azure-service-connection>'
+  resource_group_name: '<your-azure-resource-group>'
+  storage_account_name: '<your-azure-storage-account>'
+  container_name: '<your-azure-container-name>'
+  file_key_name: '<your-tfstate-key>'
 
 stages:
 - stage: Terraform_AKS_Provisioning
   displayName: 'AKS Provisioning'
   jobs:
-  - job: AKS_Provisioning
-    displayName: 'AKS Provisioning'
+  - job: Terraform_Init_Plan
+    displayName: 'Terraform Init and Plan'
     steps:
       - task: TerraformInstaller@1
+        displayName: 'Install Terraform'
         inputs:
           terraformVersion: $(terraformVersion)
 
       - task: TerraformTaskV4@4
-        displayName: Terraform init
+        displayName: 'Terraform Init'
         inputs:
-          provider: $(provider)
+          provider: 'azurerm'
           command: 'init'
-          backendServiceArm: $(backendServiceArm)
-          backendAzureRmResourceGroupName: $(backendResourceGroup)
-          backendAzureRmStorageAccountName: $(backendStorageAccount)
-          backendAzureRmContainerName: $(backendContainer)
-          backendAzureRmKey: $(backendKey)
-          
+          backendServiceArm: $(AzureRM_name)
+          backendAzureRmResourceGroupName: $(resource_group_name)
+          backendAzureRmStorageAccountName: $(storage_account_name)
+          backendAzureRmContainerName: $(container_name)
+          backendAzureRmKey: $(file_key_name)
+
       - task: TerraformTaskV4@4
-        displayName: Terraform Plan
+        displayName: 'Terraform Plan'
         inputs:
-          provider: $(provider)
+          provider: 'azurerm'
           command: 'plan'
-          environmentServiceNameAzureRM: $(backendServiceArm)
+          environmentServiceNameAzureRM: $(AzureRM_name)
+          commandOptions: '-input=false -out=tfplan'
+
+      - task: PublishPipelineArtifact@1
+        displayName: 'Publish tfplan'
+        inputs:
+          targetPath: '$(System.DefaultWorkingDirectory)/tfplan'
+          artifact: 'tfplan'
+
+  - job: waitForValidation
+    displayName: 'Wait for External Validation'
+    pool: server
+    timeoutInMinutes: 1440 # job times out in 1 day
+    steps:
+      - task: ManualValidation@0
+        displayName: 'Waiting for Validation'
+        timeoutInMinutes: 1440 
+        inputs:
+          notifyUsers: 'pranav.tripathi@nagarro.com'
+          instructions: 'Please validate the Terraform plan'
+          onTimeout: 'resume'
+
+- stage: Terraform_AKS_Apply
+  displayName: 'AKS Apply'
+  dependsOn: Terraform_AKS_Provisioning
+  condition: succeeded()
+  jobs:
+  - job: AKS_Apply
+    displayName: 'Apply Terraform Plan'
+    steps:
+      - task: TerraformInstaller@1
+        displayName: 'Install Terraform'
+        inputs:
+          terraformVersion: $(terraformVersion)
+
+      - task: DownloadPipelineArtifact@2
+        displayName: 'Download tfplan'
+        inputs:
+          artifact: 'tfplan'
+          path: '$(System.DefaultWorkingDirectory)/tfplan'
 
       - task: TerraformTaskV4@4
-        displayName: Terraform Apply
+        displayName: 'Terraform Init'
         inputs:
-          provider: $(provider)
+          provider: 'azurerm'
+          command: 'init'
+          backendServiceArm: $(AzureRM_name)
+          backendAzureRmResourceGroupName: $(resource_group_name)
+          backendAzureRmStorageAccountName: $(storage_account_name)
+          backendAzureRmContainerName: $(container_name)
+          backendAzureRmKey: $(file_key_name)
+
+      - task: TerraformTaskV4@4
+        displayName: 'Terraform Apply'
+        inputs:
+          provider: 'azurerm'
           command: 'apply'
-          commandOptions: '-auto-approve'
-          environmentServiceNameAzureRM: $(backendServiceArm)
+          commandOptions: '-input=false -auto-approve $(System.DefaultWorkingDirectory)/tfplan/tfplan'
+          environmentServiceNameAzureRM: $(AzureRM_name)
 
       - task: TerraformTaskV4@4
-        displayName: Terraform Output
+        displayName: 'Terraform Output'
         inputs:
-          provider: $(provider)
+          provider: 'azurerm'
           command: 'output'
-          environmentServiceNameAzureRM: $(backendServiceArm)
+          commandOptions: '-json'
+          environmentServiceNameAzureRM: $(AzureRM_name)
+
+      - task: PowerShell@2
+        displayName: 'Display Terraform Outputs'
+        inputs:
+          targetType: 'inline'
+          script: |
+            $outputs = (terraform output -json | ConvertFrom-Json)
+            foreach ($key in $outputs.PSObject.Properties.Name) {
+              Write-Host "${key}: $($outputs.($key).value)"
+            }
